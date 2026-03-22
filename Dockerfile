@@ -10,7 +10,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx --yes prisma@5.22.0 generate
-RUN npx prisma db push   # Crea el esquema en la DB (crea gear.db si no existe)
+# prisma db push se ejecuta en el runner stage (ver abajo)
 RUN npm run build
 
 FROM node:20-alpine AS runner
