@@ -10,6 +10,10 @@ import { EasterEggLogo } from './components/EasterEggLogo'
 // Versión de la aplicación — incrementar en cada deploy
 const VERSION = '1.0.0'
 
+// Esta página es 100% dinámica: datos de DB en runtime
+// (no prerenderizar porque DATABASE_URL no existe en build time)
+export const dynamic = 'force-dynamic'
+
 export default async function Home() {
   // Obtener datos reales desde la base de datos
   const gearItems = await getGearItems()

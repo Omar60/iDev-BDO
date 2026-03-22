@@ -10,7 +10,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx --yes prisma@5.22.0 generate
-# prisma db push se ejecuta en el runner stage (ver abajo)
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -29,11 +28,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # Asegurar que /app/data existe con permisos correctos
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
-# Crear la DB inicial si no existe (idempotente, safe para repetir)
-RUN prisma db push --skip-generate || true
+# Copiar script de entrada
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 
-CMD ["node", "server.js"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
