@@ -11,15 +11,18 @@ datasource db {
 model Gear {
   id          String   @id @default(cuid())
   name        String
-  category    String
-  tier        String?
-  stats       String?  // JSON stringified stats
-  priceG      Int?
-  priceS      Int?
-  priceC      Int?
+  category    String   // "Weapon" | "Armor" | "Accessory"
+  subcategory String?  // "Main Weapon", "Helmet", "Ring", etc.
+  tier        String   // "PEN" | "TRI" | "DUO" | "PRI" | "base"
+  enhance     Int      @default(0)   // +0 a +25
+  ap          Int      @default(0)
+  dp          Int      @default(0)
+  accuracy    Int      @default(0)
+  evasion     Int      @default(0)
+  critRate    Int      @default(0)
+  priceG      BigInt?  // Precio en silver
   lastUpdated DateTime @default(now())
-  source      String?  // Google Sheets reference
+  source      String?  // "manual" | "sheets"
 
   @@index([category])
-  @@index([name])
 }
