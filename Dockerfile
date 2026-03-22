@@ -1,19 +1,19 @@
-FROM node:20-alpine AS base
-RUN apk add --no-cache openssl
+FROM node:20-bookworm AS base
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
-FROM node:20-alpine AS deps
+FROM node:20-bookworm AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-FROM node:20-alpine AS builder
+FROM node:20-bookworm AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx --yes prisma@5.22.0 generate
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:20-bookworm AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
