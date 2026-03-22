@@ -21,6 +21,24 @@ export type GearInput = {
 
 export type GearUpdateInput = Partial<GearInput>
 
+// Tipo devuelto por getGearItems (del schema de Prisma)
+export type GearItem = {
+  id: string
+  name: string
+  category: string
+  subcategory: string | null
+  tier: string
+  enhance: number
+  ap: number
+  dp: number
+  accuracy: number
+  evasion: number
+  critRate: number
+  priceG: bigint | null
+  lastUpdated: Date
+  source: string | null
+}
+
 /**
  * Obtiene todos los items de gear ordenados por nombre
  */
