@@ -24,5 +24,6 @@ model Gear {
   lastUpdated DateTime @default(now())
   source      String?  // "manual" | "sheets"
 
+  @@unique([name])
   @@index([category])
 }
