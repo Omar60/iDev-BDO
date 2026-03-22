@@ -5,7 +5,8 @@
 // Recibe datos como props desde page.tsx (Server Component)
 // ============================================================
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { GearItem } from '@/app/actions/gear'
 import { deleteGear } from '@/app/actions/gear'
 import { importFromSheets } from '@/app/actions/sheets'
@@ -16,10 +17,13 @@ type Props = {
 }
 
 export function GearTable({ items }: Props) {
+  const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<GearItem | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  // T1: Toast para feedback de import
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // Datos para stats
   const totalAP = items.reduce((sum, item) => sum + item.ap, 0)
@@ -79,21 +83,40 @@ export function GearTable({ items }: Props) {
     setEditingItem(null)
   }
 
-  // Eliminar item
+  // Eliminar item — T3: recargar datos tras eliminar
   const handleDelete = async (id: string) => {
     if (window.confirm('¿Eliminar este item de gear?')) {
       await deleteGear(id)
+      router.refresh()
     }
   }
 
-  // Importar desde Google Sheets
+  // T1: Mostrar toast y auto-ocultarlo
+  const showToast = useCallback((type: 'success' | 'error', message: string) => {
+    setToast({ type, message })
+    setTimeout(() => setToast(null), 4000)
+  }, [])
+
+  // T1: Importar desde Google Sheets — con feedback visual
   const handleImportFromSheets = async () => {
     setImporting(true)
+    setToast(null)
     try {
-      await importFromSheets()
-      window.location.reload()
+      const result = await importFromSheets()
+      if (result.success) {
+        const total = result.imported + result.updated
+        showToast('success', `✅ Importados ${total} items (${result.imported} nuevos, ${result.updated} actualizados)`)
+      } else {
+        const msg = result.errors.length > 0
+          ? `❌ Error: ${result.errors.slice(0, 2).join(' | ')}`
+          : '❌ Error desconocido al importar'
+        showToast('error', msg)
+      }
+      // T2: Revalidar datos en la página sin reload completo
+      router.refresh()
     } catch (error) {
       console.error('Import failed:', error)
+      showToast('error', `❌ Error de conexión: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       setImporting(false)
     }
@@ -101,6 +124,13 @@ export function GearTable({ items }: Props) {
 
   return (
     <>
+      {/* T1: Toast de feedback */}
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          {toast.message}
+        </div>
+      )}
+
       {/* MODAL DE ADD/EDIT */}
       {modalOpen && (
         <GearFormModal
@@ -163,8 +193,14 @@ export function GearTable({ items }: Props) {
           </div>
 
           {filteredItems.length === 0 ? (
-            <div className="gear-row-empty">
-              No hay items en esta categoría. ¡Añade tu primer gear! ⚔️
+            // T2/T4: Empty state amigable con mensaje de acción
+            <div className="gear-empty-state">
+              <div className="gear-empty-icon">🔮</div>
+              <div className="gear-empty-title">No hay items en esta categoría</div>
+              <div className="gear-empty-hint">
+                Usa <strong>📥 Import from Sheets</strong> para traer datos de tu spreadsheet, o{' '}
+                <strong>➕ Add Item</strong> para añadir gear manualmente.
+              </div>
             </div>
           ) : (
             filteredItems.map((item) => (

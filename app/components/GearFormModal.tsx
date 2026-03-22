@@ -86,7 +86,7 @@ export default function GearFormModal({ item, onClose }: Props) {
         await createGear(data)
       }
 
-      // Cerrar modal — el Server Component se revalidará automáticamente
+      // Cerrar modal — revalidatePath('/') en la server action revalidará los datos
       onClose()
     } catch (err) {
       console.error('Error al guardar gear:', err)
