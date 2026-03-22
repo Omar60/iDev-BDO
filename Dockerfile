@@ -18,7 +18,8 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public 2>/dev/null || true
+# public/ es estático y viene del código fuente en el builder, no del output standalone
+RUN cp -r /app/public ./public 2>/dev/null || true
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
