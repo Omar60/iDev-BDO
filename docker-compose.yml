@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - DATABASE_URL=file:/app/data/gear.db
+      - DATABASE_URL=file:/app/.data/gear.db
       - GOOGLE_SHEETS_CSV_URL=${GOOGLE_SHEETS_CSV_URL}
 
 volumes:

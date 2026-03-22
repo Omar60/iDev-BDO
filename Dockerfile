@@ -18,8 +18,8 @@ COPY . .
 RUN npx --yes prisma@5.22.0 generate
 
 # Crear la base de datos durante el build (idempotente — si ya existe no hace nada)
-# DATABASE_URL es necesaria aquí; la ruta es relativa al archivo schema.prisma (/app/prisma/)
-RUN DATABASE_URL="file:../data/gear.db" npx prisma db push --skip-generate
+# Usamos /app/.data para que el volumen montado en /app/data no lo sobrescriba
+RUN DATABASE_URL="file:../.data/gear.db" npx prisma db push --skip-generate
 
 RUN npm run build
 
@@ -39,8 +39,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 
-# Asegurar que /app/data existe con permisos correctos
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+# Asegurar que /app/.data existe con permisos correctos (no montado por el volume)
+RUN mkdir -p /app/.data && chown nextjs:nodejs /app/.data
 
 # Copiar public/ estático (si existe)
 RUN cp -r /app/public ./public 2>/dev/null || true
