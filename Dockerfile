@@ -9,7 +9,9 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx --yes prisma@5.22.0 generate && npm run build
+RUN npx --yes prisma@5.22.0 generate
+RUN npx prisma db push   # Crea el esquema en la DB (crea gear.db si no existe)
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -22,6 +24,13 @@ RUN adduser --system --uid 1001 nextjs
 RUN cp -r /app/public ./public 2>/dev/null || true
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Asegurar que /app/data existe con permisos correctos
+RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+
+# Crear la DB inicial si no existe (idempotente, safe para repetir)
+RUN prisma db push --skip-generate || true
 
 USER nextjs
 EXPOSE 3000
