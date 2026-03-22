@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { GearItem } from '@/app/actions/gear'
 import { deleteGear } from '@/app/actions/gear'
+import { importFromSheets } from '@/app/actions/sheets'
 import GearFormModal from './GearFormModal'
 
 type Props = {
@@ -18,6 +19,7 @@ export function GearTable({ items }: Props) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<GearItem | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
 
   // Datos para stats
   const totalAP = items.reduce((sum, item) => sum + item.ap, 0)
@@ -84,6 +86,19 @@ export function GearTable({ items }: Props) {
     }
   }
 
+  // Importar desde Google Sheets
+  const handleImportFromSheets = async () => {
+    setImporting(true)
+    try {
+      await importFromSheets()
+      window.location.reload()
+    } catch (error) {
+      console.error('Import failed:', error)
+    } finally {
+      setImporting(false)
+    }
+  }
+
   return (
     <>
       {/* MODAL DE ADD/EDIT */}
@@ -125,6 +140,9 @@ export function GearTable({ items }: Props) {
           ))}
           <button className="tab-btn tab-btn-add" onClick={handleAdd}>
             ➕ Add Item
+          </button>
+          <button className="tab-btn" onClick={handleImportFromSheets} disabled={importing}>
+            {importing ? '⏳ Importando...' : '📥 Import from Sheets'}
           </button>
         </div>
 
