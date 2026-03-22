@@ -18,7 +18,8 @@ COPY . .
 RUN npx --yes prisma@5.22.0 generate
 
 # Crear la base de datos durante el build (idempotente — si ya existe no hace nada)
-RUN npx prisma db push --skip-generate
+# DATABASE_URL es necesaria aquí; la ruta es relativa al archivo schema.prisma (/app/prisma/)
+RUN DATABASE_URL="file:../data/gear.db" npx prisma db push --skip-generate
 
 RUN npm run build
 
