@@ -109,6 +109,41 @@ docker-compose -f docker-compose.prod.yml up -d
    - Restart policy: `Unless stopped`
    - Click **Deploy the container**
 
+## Diseño de la UI
+
+La interfaz está inspirada en **Garmoth.com** (gear planner), con estética dark theme y acentos dorados/púrpura característicos de Black Desert Online.
+
+### Paleta de colores
+- **Fondo principal:** `#0f0f14` (negro profundo)
+- **Fondo cards/paneles:** `#1a1a24`
+- **Acento dorado:** `#fbbf24` (AP, valores destacados)
+- **Acento púrpura:** `#c084fc` (DP, valores de defensa)
+- **Acento verde:** `#4ade80` (PEN items)
+- **Texto principal:** `#f0f0f0`
+- **Texto secundario:** `#9ca3af`
+
+### Layout
+1. **Header** — Logo `⚔️ iDev.BDO-GEAR` con estadísticas totales de AP y DP resumidas
+2. **Nota de referencia** — Crédito a Garmoth.com como inspiración
+3. **Tabs de categoría** — Weapon ⚔️ / Armor 🛡️ / Accessory 💍 + botón "➕ Add Item"
+4. **Tabla de Gear** — Lista de items con columnas: Item, Category, Tier, Enhancement, AP, DP, ACC, EVA, Price, Actions
+5. **Stats Cards** — Tres tarjetas: Attack Stats, Defense Stats, Estimated Value
+
+### Sistema de tiers (badges)
+- **PEN** — dorado/verde intenso
+- **TRI** — azul claro
+- **DUO** — azul medio
+- **PRI** — gris azulado
+- **Base** — gris
+
+### Íconos por categoría
+- Weapon: 🗡️
+- Armor: 🛡️
+- Accessory: 💍
+- Precio: 💰
+
+---
+
 ## Arquitectura
 
 - `src/app/` — Next.js App Router

@@ -1,3 +1,7 @@
+'use client';
+
+import { useIDevEasterEgg, EasterEggModal } from './components/iDevEasterEgg';
+
 // ============================================================
 // iDev.BDO-GEAR — Página principal de gear tracker
 // Inspirado en Garmoth.com (gear planner UI)
@@ -8,9 +12,12 @@
 // - Sistema de tiers: PEN > TRI > DUO > PRI > base
 // - Dark theme con acentos dorados/púrpura (estética BDO)
 // - Precio en silver por item
+// Easter Egg: clickea el logo 5 veces o escribe "iDevotion" en la consola
 // ============================================================
 
 export default function Home() {
+  const { active: easterEggActive, close: closeEasterEgg, handleLogoClick, logoClicks } = useIDevEasterEgg();
+
   // Datos de ejemplo hardcodeados (fake BDO items)
   const gearItems = [
     {
@@ -103,16 +110,36 @@ export default function Home() {
     return "category-accessory";
   };
 
+  // Tooltip para el easter egg
+  const easterEggHint = logoClicks > 0
+    ? `${5 - logoClicks} más... 😏`
+    : null;
+
   return (
     <div>
+      {/* EASTER EGG MODAL */}
+      {easterEggActive && <EasterEggModal onClose={closeEasterEgg} />}
+
       {/* HEADER */}
       <header className="header">
         <div className="header-inner">
           <div>
-            <h1 className="header-title">
+            {/* Logo clickeable — easter egg trigger */}
+            <h1
+              className="header-title"
+              onClick={handleLogoClick}
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              title={easterEggHint || '⚔️ iDev.BDO-GEAR'}
+            >
               <span>⚔️ </span>
               <span className="header-title-idev">iDev</span>
               <span className="header-title-bdo">.BDO-GEAR</span>
+              {/* Hint visual cuando empiezan a hacer click */}
+              {logoClicks > 0 && (
+                <span style={{ fontSize: '12px', marginLeft: '6px', verticalAlign: 'middle' }}>
+                  {Array.from({ length: logoClicks }).map((_, i) => '👅').join('')}
+                </span>
+              )}
             </h1>
             <p className="header-subtitle">
               Black Desert Online — Gear Tracker & Planner
