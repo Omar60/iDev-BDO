@@ -5,8 +5,9 @@
 // Se comunica con server actions: createGear / updateGear
 // ============================================================
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createGear, updateGear, GearItem } from '@/app/actions/gear'
+import { searchFromSheets, SheetSearchResult } from '@/app/actions/sheets'
 
 type Props = {
   item: GearItem | null   // null = crear, existente = editar
@@ -40,6 +41,70 @@ export default function GearFormModal({ item, onClose }: Props) {
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+
+  // Búsqueda en mercado
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<SheetSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([])
+      setShowDropdown(false)
+      return
+    }
+
+    setSearching(true)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await searchFromSheets(searchQuery)
+        setSearchResults(results)
+        setShowDropdown(results.length > 0)
+      } catch {
+        setSearchResults([])
+        setShowDropdown(false)
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
+  // Auto-rellenar desde resultado del sheet
+  const handleSelectResult = useCallback((result: SheetSearchResult) => {
+    setForm((prev) => ({
+      ...prev,
+      name: result.name,
+      priceG: result.priceG !== null ? result.priceG.toString() : '',
+    }))
+    setSearchQuery('')
+    setSearchResults([])
+    setShowDropdown(false)
+  }, [])
 
   // Validación básica
   const validate = () => {
@@ -86,7 +151,6 @@ export default function GearFormModal({ item, onClose }: Props) {
         await createGear(data)
       }
 
-      // Cerrar modal — revalidatePath('/') en la server action revalidará los datos
       onClose()
     } catch (err) {
       console.error('Error al guardar gear:', err)
@@ -123,6 +187,49 @@ export default function GearFormModal({ item, onClose }: Props) {
         <form onSubmit={handleSubmit} className="modal-form">
           {errors.form && (
             <div className="form-error-banner">{errors.form}</div>
+          )}
+
+          {/* Buscador de mercado */}
+          {!isEdit && (
+            <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
+              <label className="form-label">🔍 Buscar en mercado</label>
+              <input
+                type="text"
+                className="form-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Escribe para buscar en el market..."
+              />
+              {searching && (
+                <span className="form-hint" style={{ color: '#a78bfa' }}>
+                  Buscando...
+                </span>
+              )}
+              {/* Dropdown de resultados */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="market-dropdown">
+                  {searchResults.map((result, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="market-dropdown-item"
+                      onClick={() => handleSelectResult(result)}
+                    >
+                      <span className="market-item-name">{result.name}</span>
+                      {result.priceG !== null && (
+                        <span className="market-item-price">
+                          {result.priceG >= 1_000_000_000
+                            ? `${(result.priceG / 1_000_000_000).toFixed(1)}B`
+                            : result.priceG >= 1_000_000
+                            ? `${(result.priceG / 1_000_000).toFixed(0)}M`
+                            : result.priceG.toLocaleString()}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Nombre */}

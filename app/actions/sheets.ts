@@ -1,6 +1,76 @@
 'use server'
 
 import Papa from 'papaparse'
+
+/**
+ * Resultado de una búsqueda en el sheet
+ */
+export type SheetSearchResult = {
+  name: string
+  priceG: number | null
+}
+
+/**
+ * Busca items en el CSV de Google Sheets por nombre.
+ * Retorna hasta 5 resultados cuyo nombre contenga el query (case-insensitive).
+ */
+export async function searchFromSheets(query: string): Promise<SheetSearchResult[]> {
+  if (!query || query.trim().length < 2) return []
+
+  const csvUrl =
+    'https://docs.google.com/spreadsheets/d/1NsGi5c648KgnCyLdYWvtfkr36zjXK6FdBFxMjVQ_-9I/export?format=csv&gid=0'
+
+  try {
+    const response = await fetch(csvUrl)
+    if (!response.ok) return []
+
+    const csvText = await response.text()
+
+    const parsed = Papa.parse(csvText, {
+      header: false,
+      skipEmptyLines: true
+    })
+
+    if (parsed.errors.length > 0) return []
+
+    const rows = parsed.data as unknown[][]
+    const firstRow = rows[0]
+    const hasHeader =
+      firstRow &&
+      typeof firstRow[0] === 'string' &&
+      /nombre|itemid|stock/i.test(String(firstRow[0]))
+
+    const dataRows = hasHeader ? rows.slice(1) : rows
+
+    const queryLower = query.toLowerCase().trim()
+    const results: SheetSearchResult[] = []
+
+    for (const row of dataRows) {
+      const nameRaw = row[0]
+      const priceRaw = row[4]
+
+      const name = typeof nameRaw === 'string' ? nameRaw.trim() : String(nameRaw ?? '').trim()
+
+      if (!name || !name.toLowerCase().includes(queryLower)) continue
+
+      let priceG: number | null = null
+      if (priceRaw !== null && priceRaw !== undefined && priceRaw !== '') {
+        const parsedPrice = parseInt(String(priceRaw).trim(), 10)
+        if (!isNaN(parsedPrice)) {
+          priceG = parsedPrice
+        }
+      }
+
+      results.push({ name, priceG })
+
+      if (results.length >= 5) break
+    }
+
+    return results
+  } catch {
+    return []
+  }
+}
 import { prisma } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 
@@ -35,6 +105,7 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
 
   try {
     // Fetch del CSV
+    console.log('[Sheets Import] Descargando CSV desde Google Sheets...')
     const response = await fetch(csvUrl)
     if (!response.ok) {
       result.errors.push(
@@ -44,6 +115,7 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
     }
 
     const csvText = await response.text()
+    console.log(`[Sheets Import] CSV recibido: ${csvText.length} caracteres`)
 
     // Parsear sin headers — usamos índices de columna
     // Formato: Nombre(0), ItemID(1), Stock(2), Transacciones(3), Precio(4), PrecioMax(5), ?(6)
@@ -59,6 +131,7 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
     }
 
     const rows = parsed.data as unknown[][]
+    console.log(`[Sheets Import] Total filas parseadas: ${rows.length}`)
 
     // Primera fila suele ser header, verificamos si parece texto
     const firstRow = rows[0]
@@ -69,6 +142,7 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
 
     // Si la primera fila es header, empezar desde la fila 1
     const dataRows = hasHeader ? rows.slice(1) : rows
+    console.log(`[Sheets Import] Filas de datos: ${dataRows.length} (header detectada: ${hasHeader})`)
 
     if (dataRows.length === 0) {
       result.errors.push('No se encontraron datos en el CSV')
@@ -100,6 +174,9 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
           }
         }
 
+        // Verificar si ya existe para distinguir import vs update
+        const existing = await prisma.gear.findUnique({ where: { name } })
+
         // Upsert por nombre exacto
         await prisma.gear.upsert({
           where: { name },
@@ -124,21 +201,22 @@ export async function importFromSheets(): Promise<SheetsImportResult> {
           }
         })
 
-        // Verificar si existía para contar como importado o actualizado
-        // Hacemos una consulta rápida para distinguir
-        // (upsert no dice si creó o actualizó, así que verificamos)
-        result.imported++ // aproximación — se corrige abajo
+        if (existing) {
+          result.updated++
+          console.log(`[Sheets Import] Actualizado: ${name}`)
+        } else {
+          result.imported++
+          console.log(`[Sheets Import] Importado: ${name}`)
+        }
       } catch (rowErr) {
+        console.error(`[Sheets Import] Error fila ${rowNum}:`, rowErr)
         result.errors.push(
           `Fila ${rowNum}: Error procesando - ${String(rowErr)}`
         )
       }
     }
 
-    // Corrección: contar exactamente importado vs actualizado
-    // Volvemos a recorrer para verificar qué se creó vs actualizó
-    // (Esto es opcional pero da counts precisos)
-    // Por ahora usamos una aproximación simple
+    console.log(`[Sheets Import] Resultado: ${result.imported} nuevos, ${result.updated} actualizados, ${result.errors.length} errores`)
     result.success = result.errors.length === 0
 
     revalidatePath('/')
