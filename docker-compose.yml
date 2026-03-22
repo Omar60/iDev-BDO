@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: idev-bdo-gear
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=file:/app/data/gear.db
+      - GOOGLE_SHEETS_CSV_URL=${GOOGLE_SHEETS_CSV_URL}
+
+volumes:
+  data:
+    driver: local

@@ -1,0 +1,25 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Gear {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  tier        String?
+  stats       String?  // JSON stringified stats
+  priceG      Int?
+  priceS      Int?
+  priceC      Int?
+  lastUpdated DateTime @default(now())
+  source      String?  // Google Sheets reference
+
+  @@index([category])
+  @@index([name])
+}
